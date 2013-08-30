@@ -1,0 +1,106 @@
+<kibana-panel ng-controller='redis' ng-init="init()">
+<script type="text/javascript">
+
+    $(function() {
+
+        // We use an inline data source in the example, usually data would
+        // be fetched from a server
+
+        var data = [], totalPoints = 300, max_y = 10;
+
+        function get_data_struct(data) {
+
+            clicks = data.current.c_clicks;
+            sales = data.current.c_sales;
+
+            // Zip the generated y values with the x values
+
+            var c_res = [];
+            for (var i = 0; i < clicks.length; ++i) {
+                v = clicks[i];
+                if (v > max_y) {
+                    max_y = v;
+                }
+                c_res.push([clicks.length - i, v])
+            }
+
+            var s_res = [];
+            for (var i = 0; i < sales.length; ++i) {
+                v = sales[i];
+                if (v > max_y) {
+                    max_y = v;
+                }
+                s_res.push([sales.length - i, v])
+            }
+
+            return [
+                {label: "c_clicks", data: c_res, bars: { show: true }},
+                {label: "c_sales", data: s_res, bars: { show: true }}
+            ];
+        }
+
+        // Set up the control widget
+
+        var updateInterval = 1 * 1000;
+        var options = {
+            series: {
+                shadowSize: 0   // Drawing is faster without shadows
+            },
+            yaxis: {
+                min: 0,
+                max: max_y,
+                show: true
+            },
+            xaxis: {
+                show: false,
+                min: 0,
+                max: totalPoints
+            }
+        };
+
+        $.plot("#placeholder", [ ], options);
+
+        function update(_data) {
+
+            console.log('update');
+
+            if (typeof(_data.current) != "undefined") {
+                _data = get_data_struct(_data);
+                options.yaxis.max = max_y;
+                $.plot("#placeholder", _data, options);
+
+            }
+            setTimeout(GetData, updateInterval);
+        }
+
+        function GetData() {
+            //set no cache
+            $.ajaxSetup({ cache: false });
+         
+            $.ajax({
+                url: "http://trackit.edelight.net/redis/queues",
+                dataType: 'json',
+                success: update,  //if success, call update()
+                error: function () {
+                    //if fail, prepare next update
+                    setTimeout(GetData, updateInterval);
+                }
+            });
+        }
+
+        update({});
+    });
+
+    </script>
+
+  <div id="header">
+        <h2>Trackit queue</h2>
+    </div>
+
+    <div id="content">
+
+        <div class="demo-container">
+            <div id="placeholder" class="demo-placeholder"></div>
+        </div>
+    </div>
+</kibana-panel>         
